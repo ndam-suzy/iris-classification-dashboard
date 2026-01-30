@@ -328,10 +328,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ====================================================================
 # PAGE 1: DASHBOARD
 # ====================================================================
-
 if st.session_state.current_page == "Dashboard":
     df = load_iris_data()
     
+    # Section 1: Vue d'ensemble du modèle
     st.markdown('<div class="section-header">Vue d\'ensemble du modèle</div>', unsafe_allow_html=True)
     
     if MODEL_INFO:
@@ -345,6 +345,7 @@ if st.session_state.current_page == "Dashboard":
         with col4:
             st.markdown(create_metric_card("Classes", len(MODEL_INFO['species']), "Espèces identifiables"), unsafe_allow_html=True)
     
+    # Section 2: Statistiques du dataset
     st.markdown('<div class="section-header">Analyse statistique du dataset</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns([2, 1])
@@ -352,27 +353,186 @@ if st.session_state.current_page == "Dashboard":
     with col1:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown("#### Statistiques descriptives")
+        
         stats = df.describe().T[['mean', 'std', 'min', 'max']].round(2)
         stats.columns = ['Moyenne', 'Écart-type', 'Minimum', 'Maximum']
+        
+        # Créer un tableau stylisé
         fig = go.Figure(data=[go.Table(
-            header=dict(values=['Variable'] + list(stats.columns), fill_color='#1a1a1a', align='left', font=dict(color='white', size=12, family='Inter')),
-            cells=dict(values=[stats.index] + [stats[col] for col in stats.columns], fill_color='#242424', align='left', font=dict(color='#b3b3b3', size=11, family='Inter'))
-        )])
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=250, margin=dict(l=0, r=0, t=0, b=0))
+            header=dict(
+                values=['Variable'] + list(stats.columns),
+                fill_color='#1a1a1a',
+                align='left',
+                font=dict(color='white', size=12, family='Inter')
+            ),
+            cells=dict(
+                values=[stats.index] + [stats[col] for col in stats.columns],
+                fill_color='#242424',
+                align='left',
+                font=dict(color='#b3b3b3', size=11, family='Inter')
+            ))
+        ])
+        
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=250,
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.markdown("#### Répartition des espèces")
+        
         species_counts = df['species'].value_counts()
-        fig = go.Figure(data=[go.Pie(labels=species_counts.index, values=species_counts.values, hole=0.6, marker=dict(colors=['#ff6b9d', '#ff8fb3', '#d4537a']), textfont=dict(color='white', size=14, family='Inter'))])
-        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True, legend=dict(font=dict(color='white', family='Inter'), bgcolor='rgba(26,26,26,0.5)'), height=250, margin=dict(l=20, r=20, t=20, b=20))
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=species_counts.index,
+            values=species_counts.values,
+            hole=0.6,
+            marker=dict(colors=['#ff6b9d', '#ff8fb3', '#d4537a']),
+            textfont=dict(color='white', size=14, family='Inter')
+        )])
+        
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            showlegend=True,
+            legend=dict(
+                font=dict(color='white', family='Inter'),
+                bgcolor='rgba(26,26,26,0.5)'
+            ),
+            height=250,
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Section 3: Corrélations
+    st.markdown('<div class="section-header">Matrice de corrélation</div>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([3, 2])
+    
+    with col1:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        
+        corr_matrix = df[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']].corr()
+        
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width'],
+            y=['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width'],
+            colorscale=[[0, '#1a1a1a'], [0.5, '#ff6b9d'], [1, '#ff8fb3']],
+            text=corr_matrix.values.round(2),
+            texttemplate='%{text}',
+            textfont={"size": 12, "color": "white"},
+            colorbar=dict(
+                tickfont=dict(color='white'),
+                title=dict(text="Corrélation", font=dict(color='white'))
+            )
+        ))
+        
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', family='Inter'),
+            height=400,
+            margin=dict(l=0, r=0, t=0, b=0)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### Corrélations fortes")
+        
+        strong_corr = []
+        for i in range(len(corr_matrix.columns)):
+            for j in range(i+1, len(corr_matrix.columns)):
+                if abs(corr_matrix.iloc[i, j]) > 0.8:
+                    strong_corr.append({
+                        'Var 1': corr_matrix.columns[i].replace('_', ' ').title(),
+                        'Var 2': corr_matrix.columns[j].replace('_', ' ').title(),
+                        'Corrélation': f"{corr_matrix.iloc[i, j]:.3f}"
+                    })
+        
+        if strong_corr:
+            for corr in strong_corr:
+                st.markdown(f"""
+                <div style="background: #242424; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 3px solid #ff6b9d;">
+                    <div style="color: #b3b3b3; font-size: 0.85rem;">{corr['Var 1']} ↔ {corr['Var 2']}</div>
+                    <div style="color: #ff6b9d; font-size: 1.25rem; font-weight: 600; margin-top: 0.25rem;">{corr['Corrélation']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Section 4: Distribution des variables
+    st.markdown('<div class="section-header">Distribution des caractéristiques</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    
+    variables = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
+    titles = ['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width']
+    
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=titles,
+        vertical_spacing=0.15,
+        horizontal_spacing=0.1
+    )
+    
+    colors = {'setosa': '#ff6b9d', 'versicolor': '#ff8fb3', 'virginica': '#d4537a'}
+    
+    for idx, (var, title) in enumerate(zip(variables, titles)):
+        row = idx // 2 + 1
+        col = idx % 2 + 1
+        
+        for species in df['species'].unique():
+            species_data = df[df['species'] == species][var]
+            
+            fig.add_trace(
+                go.Violin(
+                    y=species_data,
+                    name=species,
+                    marker_color=colors[species],
+                    showlegend=(idx == 0),
+                    box_visible=True,
+                    meanline_visible=True
+                ),
+                row=row, col=col
+            )
+    
+    fig.update_layout(
+        height=600,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white', family='Inter'),
+        showlegend=True,
+        legend=dict(
+            bgcolor='rgba(26,26,26,0.8)',
+            bordercolor='#333',
+            borderwidth=1
+        ),
+        margin=dict(l=40, r=40, t=60, b=40)
+    )
+    
+    fig.update_xaxes(showgrid=False, zeroline=False)
+    fig.update_yaxes(showgrid=True, gridcolor='#333', zeroline=False)
+    
+    st.plotly_chart(fig, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Section 5: Métriques rapides
     st.markdown('<div class="section-header">Métriques du dataset</div>', unsafe_allow_html=True)
+    
     col1, col2, col3, col4, col5, col6 = st.columns(6)
+    
     metrics = [
         ("Total Échantillons", f"{len(df)}"),
         ("Variables", f"{len(df.columns)-1}"),
@@ -381,10 +541,12 @@ if st.session_state.current_page == "Dashboard":
         ("Moyenne Sepal", f"{df['sepal_length'].mean():.2f}"),
         ("Moyenne Petal", f"{df['petal_length'].mean():.2f}")
     ]
+    
     for col, (label, value) in zip([col1, col2, col3, col4, col5, col6], metrics):
         with col:
             st.markdown(create_stat_box(label, value), unsafe_allow_html=True)
 
+            
 # ====================================================================
 # PAGE 2: PRÉDICTION SIMPLE
 # ====================================================================
